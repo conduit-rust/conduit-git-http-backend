@@ -58,12 +58,12 @@ impl Serve {
         let mut headers = HashMap::new();
         for line in rdr.by_ref().lines() {
             let line = try!(line);
-            if line.as_slice() == "\r\n" { break }
+            if line.as_slice() == "\r" { break }
 
             let mut parts = line.as_slice().splitn(2, ':');
             let key = parts.next().unwrap();
             let value = parts.next().unwrap();
-            let value = &value[1 .. value.len() - 2];
+            let value = &value[1 .. value.len() - 1];
             match headers.entry(key.to_string()) {
                 Entry::Occupied(e) => e.into_mut(),
                 Entry::Vacant(e) => e.insert(Vec::new()),
