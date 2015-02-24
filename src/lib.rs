@@ -1,4 +1,4 @@
-#![feature(old_io, core, std_misc, old_path)]
+#![feature(io, core, std_misc, path, process)]
 #![cfg_attr(test, deny(warnings))]
 
 extern crate conduit;
@@ -7,28 +7,33 @@ extern crate flate2;
 use std::ascii::AsciiExt;
 use std::collections::hash_map::{HashMap, Entry};
 use std::error::Error;
-use std::old_io::{Process, Command, IoResult, BufferedReader, util};
+use std::io::prelude::*;
+use std::io;
+use std::path::PathBuf;
+use std::process::{Command, Child, Stdio};
 
 use conduit::{Request, Response};
-use flate2::reader::GzDecoder;
+use flate2::read::GzDecoder;
 
-pub struct Serve(pub Path);
+pub struct Serve(pub PathBuf);
 
 impl Serve {
-    fn doit(&self, req: &mut Request) -> IoResult<Response> {
+    fn doit(&self, req: &mut Request) -> io::Result<Response> {
         let mut cmd = Command::new("git");
         cmd.arg("http-backend");
 
         // Required environment variables
         cmd.env("REQUEST_METHOD",
-                format!("{:?}", req.method()).as_slice().to_ascii_uppercase());
+                &format!("{:?}", req.method()).as_slice().to_ascii_uppercase());
         cmd.env("GIT_PROJECT_ROOT", &self.0);
         cmd.env("PATH_INFO", req.path());
         cmd.env("REMOTE_USER", "");
-        cmd.env("REMOTE_ADDR", req.remote_ip().to_string());
+        cmd.env("REMOTE_ADDR", &req.remote_ip().to_string());
         cmd.env("QUERY_STRING", req.query_string().unwrap_or(""));
         cmd.env("CONTENT_TYPE", header(req, "Content-Type"));
-        cmd.stderr(::std::old_io::process::InheritFd(2));
+        cmd.stderr(Stdio::inherit())
+           .stdout(Stdio::capture())
+           .stdin(Stdio::capture());
         let mut p = try!(cmd.spawn());
 
         // Pass in the body of the request (if any)
@@ -37,10 +42,10 @@ impl Serve {
         // requests. I'm not totally sure that this sequential copy is the best
         // thing to do or actually correct...
         if header(req, "Content-Encoding") == "gzip" {
-            let mut body = GzDecoder::new(req.body());
-            try!(util::copy(&mut body, &mut p.stdin.take().unwrap()));
+            let mut body = try!(GzDecoder::new(req.body()));
+            try!(io::copy(&mut body, &mut p.stdin.take().unwrap()));
         } else {
-            try!(util::copy(&mut req.body(), &mut p.stdin.take().unwrap()));
+            try!(io::copy(&mut req.body(), &mut p.stdin.take().unwrap()));
         }
 
         // Parse the headers coming out, and the pass through the rest of the
@@ -48,10 +53,10 @@ impl Serve {
         //
         // Note that we have to be careful to not drop the process which will wait
         // for the process to exit (and we haven't read stdout)
-        let mut rdr = BufferedReader::new(p.stdout.take().unwrap());
+        let mut rdr = io::BufReader::new(p.stdout.take().unwrap());
 
         let mut headers = HashMap::new();
-        for line in rdr.lines() {
+        for line in rdr.by_ref().lines() {
             let line = try!(line);
             if line.as_slice() == "\r\n" { break }
 
@@ -76,9 +81,11 @@ impl Serve {
              })
         };
 
-        struct ProcessAndBuffer<R> { _p: Process, buf: BufferedReader<R> }
-        impl<R: Reader> Reader for ProcessAndBuffer<R> {
-            fn read(&mut self, b: &mut [u8]) -> IoResult<usize> { self.buf.read(b) }
+        struct ProcessAndBuffer<R> { _p: Child, buf: io::BufReader<R> }
+        impl<R: Read> Read for ProcessAndBuffer<R> {
+            fn read(&mut self, b: &mut [u8]) -> io::Result<usize> {
+                self.buf.read(b)
+            }
         }
         return Ok(Response {
             status: (status_code, status_desc),
