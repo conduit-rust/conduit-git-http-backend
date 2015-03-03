@@ -1,4 +1,4 @@
-#![feature(io, core, std_misc, path, process)]
+#![feature(io, core, std_misc, path)]
 #![cfg_attr(test, deny(warnings))]
 
 extern crate conduit;
@@ -32,8 +32,8 @@ impl Serve {
         cmd.env("QUERY_STRING", req.query_string().unwrap_or(""));
         cmd.env("CONTENT_TYPE", header(req, "Content-Type"));
         cmd.stderr(Stdio::inherit())
-           .stdout(Stdio::capture())
-           .stdin(Stdio::capture());
+           .stdout(Stdio::piped())
+           .stdin(Stdio::piped());
         let mut p = try!(cmd.spawn());
 
         // Pass in the body of the request (if any)
