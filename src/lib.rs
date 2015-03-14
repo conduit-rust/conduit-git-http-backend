@@ -1,4 +1,4 @@
-#![feature(io, core, std_misc, path)]
+#![feature(core, std_misc)]
 #![cfg_attr(test, deny(warnings))]
 
 extern crate conduit;
