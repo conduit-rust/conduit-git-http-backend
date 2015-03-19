@@ -28,7 +28,7 @@ impl Serve {
         cmd.env("GIT_PROJECT_ROOT", &self.0);
         cmd.env("PATH_INFO", req.path());
         cmd.env("REMOTE_USER", "");
-        cmd.env("REMOTE_ADDR", &req.remote_ip().to_string());
+        cmd.env("REMOTE_ADDR", req.remote_addr().to_string());
         cmd.env("QUERY_STRING", req.query_string().unwrap_or(""));
         cmd.env("CONTENT_TYPE", header(req, "Content-Type"));
         cmd.stderr(Stdio::inherit())
