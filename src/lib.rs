@@ -1,4 +1,3 @@
-#![feature(core, std_misc)]
 #![cfg_attr(test, deny(warnings))]
 
 extern crate conduit;
@@ -24,7 +23,7 @@ impl Serve {
 
         // Required environment variables
         cmd.env("REQUEST_METHOD",
-                &format!("{:?}", req.method()).as_slice().to_ascii_uppercase());
+                &format!("{:?}", req.method()).to_ascii_uppercase());
         cmd.env("GIT_PROJECT_ROOT", &self.0);
         cmd.env("PATH_INFO", req.path());
         cmd.env("REMOTE_USER", "");
@@ -58,9 +57,9 @@ impl Serve {
         let mut headers = HashMap::new();
         for line in rdr.by_ref().lines() {
             let line = try!(line);
-            if line.as_slice() == "\r" { break }
+            if line == "\r" { break }
 
-            let mut parts = line.as_slice().splitn(2, ':');
+            let mut parts = line.splitn(2, ':');
             let key = parts.next().unwrap();
             let value = parts.next().unwrap();
             let value = &value[1 .. value.len() - 1];
@@ -73,7 +72,7 @@ impl Serve {
         let (status_code, status_desc) = {
             let line = headers.remove("Status").unwrap_or(Vec::new());
             let line = line.into_iter().next().unwrap_or(String::new());
-            let mut parts = line.as_slice().splitn(1, ' ');
+            let mut parts = line.splitn(1, ' ');
             (parts.next().unwrap_or("").parse().unwrap_or(200),
              match parts.next() {
                  Some("Not Found") => "Not Found",
@@ -95,7 +94,7 @@ impl Serve {
 
         fn header<'a>(req: &'a Request, name: &str) -> &'a str {
             let h = req.headers().find(name).unwrap_or(Vec::new());
-            h.as_slice().get(0).map(|s| *s).unwrap_or("")
+            h.get(0).map(|s| *s).unwrap_or("")
         }
     }
 }
