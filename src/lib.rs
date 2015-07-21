@@ -25,7 +25,11 @@ impl Serve {
         cmd.env("REQUEST_METHOD",
                 &format!("{:?}", req.method()).to_ascii_uppercase());
         cmd.env("GIT_PROJECT_ROOT", &self.0);
-        cmd.env("PATH_INFO", req.path());
+        cmd.env("PATH_INFO", if req.path().starts_with("/") {
+            req.path().to_string()
+        } else {
+            format!("/{}", req.path())
+        });
         cmd.env("REMOTE_USER", "");
         cmd.env("REMOTE_ADDR", req.remote_addr().to_string());
         cmd.env("QUERY_STRING", req.query_string().unwrap_or(""));
