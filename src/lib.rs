@@ -1,10 +1,10 @@
-#![cfg_attr(test, deny(warnings))]
+#![deny(warnings)]
 
 extern crate conduit;
 extern crate flate2;
 
 use std::ascii::AsciiExt;
-use std::collections::hash_map::{HashMap, Entry};
+use std::collections::HashMap;
 use std::error::Error;
 use std::io::prelude::*;
 use std::io;
@@ -61,16 +61,14 @@ impl Serve {
         let mut headers = HashMap::new();
         for line in rdr.by_ref().lines() {
             let line = try!(line);
-            if line == "\r" { break }
+            if line == "" || line == "\r" { break }
 
             let mut parts = line.splitn(2, ':');
             let key = parts.next().unwrap();
             let value = parts.next().unwrap();
-            let value = &value[1 .. value.len() - 1];
-            match headers.entry(key.to_string()) {
-                Entry::Occupied(e) => e.into_mut(),
-                Entry::Vacant(e) => e.insert(Vec::new()),
-            }.push(value.to_string());
+            let value = &value[1..];
+            headers.entry(key.to_string()).or_insert(Vec::new())
+                   .push(value.to_string());
         }
 
         let (status_code, status_desc) = {
