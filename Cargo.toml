@@ -15,4 +15,4 @@ Conduit handler for running `git http-backend` and serving up a git repository.
 
 [dependencies]
 conduit = "0.8"
-flate2 = "0.2"
+flate2 = "1"

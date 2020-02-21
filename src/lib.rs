@@ -44,7 +44,7 @@ impl Serve {
         // requests. I'm not totally sure that this sequential copy is the best
         // thing to do or actually correct...
         if header(req, "Content-Encoding") == "gzip" {
-            let mut body = GzDecoder::new(req.body())?;
+            let mut body = GzDecoder::new(req.body());
             io::copy(&mut body, &mut p.stdin.take().unwrap())?;
         } else {
             io::copy(&mut req.body(), &mut p.stdin.take().unwrap())?;
