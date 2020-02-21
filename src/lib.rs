@@ -17,7 +17,7 @@ use flate2::read::GzDecoder;
 pub struct Serve(pub PathBuf);
 
 impl Serve {
-    fn doit(&self, req: &mut Request) -> io::Result<Response> {
+    fn doit(&self, req: &mut dyn Request) -> io::Result<Response> {
         let mut cmd = Command::new("git");
         cmd.arg("http-backend");
 
@@ -94,7 +94,7 @@ impl Serve {
             body: Box::new(ProcessAndBuffer { _p: p, buf: rdr }),
         });
 
-        fn header<'a>(req: &'a Request, name: &str) -> &'a str {
+        fn header<'a>(req: &'a dyn Request, name: &str) -> &'a str {
             let h = req.headers().find(name).unwrap_or(Vec::new());
             h.get(0).map(|s| *s).unwrap_or("")
         }
@@ -102,7 +102,7 @@ impl Serve {
 }
 
 impl conduit::Handler for Serve {
-    fn call(&self, req: &mut Request) -> Result<Response, Box<Error+Send>> {
-        self.doit(req).map_err(|e| Box::new(e) as Box<Error+Send>)
+    fn call(&self, req: &mut dyn Request) -> Result<Response, Box<dyn Error+Send>> {
+        self.doit(req).map_err(|e| Box::new(e) as Box<dyn Error+Send>)
     }
 }
