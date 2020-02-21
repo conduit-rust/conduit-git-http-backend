@@ -6,9 +6,8 @@ authors = ["Alex Crichton <alex@alexcrichton.com>"]
 license = "MIT/Apache-2.0"
 readme = "README.md"
 keywords = ["conduit"]
-repository = "https://github.com/alexcrichton/conduit-git-http-backend"
-homepage = "https://github.com/alexcrichton/conduit-git-http-backend"
-documentation = "http://alexcrichton.com/conduit-git-http-backend"
+repository = "https://github.com/conduit-rust/conduit-git-http-backend"
+homepage = "https://github.com/conduit-rust/conduit-git-http-backend"
 description = """
 Conduit handler for running `git http-backend` and serving up a git repository.
 """
