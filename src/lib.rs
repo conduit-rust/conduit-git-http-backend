@@ -3,7 +3,6 @@
 extern crate conduit;
 extern crate flate2;
 
-use std::ascii::AsciiExt;
 use std::collections::HashMap;
 use std::error::Error;
 use std::io::prelude::*;
