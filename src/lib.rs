@@ -37,7 +37,7 @@ impl Serve {
         cmd.stderr(Stdio::inherit())
            .stdout(Stdio::piped())
            .stdin(Stdio::piped());
-        let mut p = try!(cmd.spawn());
+        let mut p = cmd.spawn()?;
 
         // Pass in the body of the request (if any)
         //
@@ -45,10 +45,10 @@ impl Serve {
         // requests. I'm not totally sure that this sequential copy is the best
         // thing to do or actually correct...
         if header(req, "Content-Encoding") == "gzip" {
-            let mut body = try!(GzDecoder::new(req.body()));
-            try!(io::copy(&mut body, &mut p.stdin.take().unwrap()));
+            let mut body = GzDecoder::new(req.body())?;
+            io::copy(&mut body, &mut p.stdin.take().unwrap())?;
         } else {
-            try!(io::copy(&mut req.body(), &mut p.stdin.take().unwrap()));
+            io::copy(&mut req.body(), &mut p.stdin.take().unwrap())?;
         }
 
         // Parse the headers coming out, and the pass through the rest of the
@@ -60,7 +60,7 @@ impl Serve {
 
         let mut headers = HashMap::new();
         for line in rdr.by_ref().lines() {
-            let line = try!(line);
+            let line = line?;
             if line == "" || line == "\r" { break }
 
             let mut parts = line.splitn(2, ':');
