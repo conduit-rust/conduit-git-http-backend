@@ -104,7 +104,7 @@ impl Serve {
         }
         return Ok(Response {
             status: (status_code, status_desc),
-            headers: headers,
+            headers,
             body: Box::new(ProcessAndBuffer { _p: p, buf: rdr }),
         });
 
