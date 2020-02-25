@@ -5,10 +5,10 @@ extern crate flate2;
 
 use std::collections::HashMap;
 use std::error::Error;
-use std::io::prelude::*;
 use std::io;
+use std::io::prelude::*;
 use std::path::PathBuf;
-use std::process::{Command, Child, Stdio};
+use std::process::{Child, Command, Stdio};
 
 use conduit::{Request, Response};
 use flate2::read::GzDecoder;
@@ -21,21 +21,26 @@ impl Serve {
         cmd.arg("http-backend");
 
         // Required environment variables
-        cmd.env("REQUEST_METHOD",
-                &format!("{:?}", req.method()).to_ascii_uppercase());
+        cmd.env(
+            "REQUEST_METHOD",
+            &format!("{:?}", req.method()).to_ascii_uppercase(),
+        );
         cmd.env("GIT_PROJECT_ROOT", &self.0);
-        cmd.env("PATH_INFO", if req.path().starts_with("/") {
-            req.path().to_string()
-        } else {
-            format!("/{}", req.path())
-        });
+        cmd.env(
+            "PATH_INFO",
+            if req.path().starts_with("/") {
+                req.path().to_string()
+            } else {
+                format!("/{}", req.path())
+            },
+        );
         cmd.env("REMOTE_USER", "");
         cmd.env("REMOTE_ADDR", req.remote_addr().to_string());
         cmd.env("QUERY_STRING", req.query_string().unwrap_or(""));
         cmd.env("CONTENT_TYPE", header(req, "Content-Type"));
         cmd.stderr(Stdio::inherit())
-           .stdout(Stdio::piped())
-           .stdin(Stdio::piped());
+            .stdout(Stdio::piped())
+            .stdin(Stdio::piped());
         let mut p = cmd.spawn()?;
 
         // Pass in the body of the request (if any)
@@ -60,28 +65,37 @@ impl Serve {
         let mut headers = HashMap::new();
         for line in rdr.by_ref().lines() {
             let line = line?;
-            if line == "" || line == "\r" { break }
+            if line == "" || line == "\r" {
+                break;
+            }
 
             let mut parts = line.splitn(2, ':');
             let key = parts.next().unwrap();
             let value = parts.next().unwrap();
             let value = &value[1..];
-            headers.entry(key.to_string()).or_insert(Vec::new())
-                   .push(value.to_string());
+            headers
+                .entry(key.to_string())
+                .or_insert(Vec::new())
+                .push(value.to_string());
         }
 
         let (status_code, status_desc) = {
             let line = headers.remove("Status").unwrap_or(Vec::new());
             let line = line.into_iter().next().unwrap_or(String::new());
             let mut parts = line.splitn(1, ' ');
-            (parts.next().unwrap_or("").parse().unwrap_or(200),
-             match parts.next() {
-                 Some("Not Found") => "Not Found",
-                 _ => "Ok",
-             })
+            (
+                parts.next().unwrap_or("").parse().unwrap_or(200),
+                match parts.next() {
+                    Some("Not Found") => "Not Found",
+                    _ => "Ok",
+                },
+            )
         };
 
-        struct ProcessAndBuffer<R> { _p: Child, buf: io::BufReader<R> }
+        struct ProcessAndBuffer<R> {
+            _p: Child,
+            buf: io::BufReader<R>,
+        }
         impl<R: Read> Read for ProcessAndBuffer<R> {
             fn read(&mut self, b: &mut [u8]) -> io::Result<usize> {
                 self.buf.read(b)
@@ -101,7 +115,8 @@ impl Serve {
 }
 
 impl conduit::Handler for Serve {
-    fn call(&self, req: &mut dyn Request) -> Result<Response, Box<dyn Error+Send>> {
-        self.doit(req).map_err(|e| Box::new(e) as Box<dyn Error+Send>)
+    fn call(&self, req: &mut dyn Request) -> Result<Response, Box<dyn Error + Send>> {
+        self.doit(req)
+            .map_err(|e| Box::new(e) as Box<dyn Error + Send>)
     }
 }
