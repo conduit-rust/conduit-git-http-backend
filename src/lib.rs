@@ -5,31 +5,27 @@ extern crate conduit;
 extern crate flate2;
 
 use std::collections::HashMap;
-use std::error::Error;
 use std::io;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 
-use conduit::{Request, Response};
+use conduit::{box_error, header, Body, HandlerResult, RequestExt, Response};
 use flate2::read::GzDecoder;
 
 pub struct Serve(pub PathBuf);
 
 impl Serve {
-    fn doit(&self, req: &mut dyn Request) -> io::Result<Response> {
+    fn doit(&self, req: &mut dyn RequestExt) -> io::Result<Response<Body>> {
         let mut cmd = Command::new("git");
         cmd.arg("http-backend");
 
         // Required environment variables
-        cmd.env(
-            "REQUEST_METHOD",
-            &format!("{:?}", req.method()).to_ascii_uppercase(),
-        );
+        cmd.env("REQUEST_METHOD", &format!("{}", req.method()));
         cmd.env("GIT_PROJECT_ROOT", &self.0);
         cmd.env(
             "PATH_INFO",
-            if req.path().starts_with("/") {
+            if req.path().starts_with('/') {
                 req.path().to_string()
             } else {
                 format!("/{}", req.path())
@@ -37,8 +33,8 @@ impl Serve {
         );
         cmd.env("REMOTE_USER", "");
         cmd.env("REMOTE_ADDR", req.remote_addr().to_string());
-        cmd.env("QUERY_STRING", req.query_string().unwrap_or(""));
-        cmd.env("CONTENT_TYPE", header(req, "Content-Type"));
+        cmd.env("QUERY_STRING", req.query_string().unwrap_or_default());
+        cmd.env("CONTENT_TYPE", header(req, header::CONTENT_TYPE));
         cmd.stderr(Stdio::inherit())
             .stdout(Stdio::piped())
             .stdin(Stdio::piped());
@@ -49,7 +45,7 @@ impl Serve {
         // As part of the CGI interface we're required to take care of gzip'd
         // requests. I'm not totally sure that this sequential copy is the best
         // thing to do or actually correct...
-        if header(req, "Content-Encoding") == "gzip" {
+        if header(req, header::CONTENT_ENCODING) == "gzip" {
             let mut body = GzDecoder::new(req.body());
             io::copy(&mut body, &mut p.stdin.take().unwrap())?;
         } else {
@@ -76,21 +72,15 @@ impl Serve {
             let value = &value[1..];
             headers
                 .entry(key.to_string())
-                .or_insert(Vec::new())
+                .or_insert_with(Vec::new)
                 .push(value.to_string());
         }
 
-        let (status_code, status_desc) = {
-            let line = headers.remove("Status").unwrap_or(Vec::new());
-            let line = line.into_iter().next().unwrap_or(String::new());
+        let status_code = {
+            let line = headers.remove("Status").unwrap_or_default();
+            let line = line.into_iter().next().unwrap_or_default();
             let mut parts = line.splitn(1, ' ');
-            (
-                parts.next().unwrap_or("").parse().unwrap_or(200),
-                match parts.next() {
-                    Some("Not Found") => "Not Found",
-                    _ => "Ok",
-                },
-            )
+            parts.next().unwrap_or("").parse().unwrap_or(200)
         };
 
         struct ProcessAndBuffer<R> {
@@ -102,22 +92,34 @@ impl Serve {
                 self.buf.read(b)
             }
         }
-        return Ok(Response {
-            status: (status_code, status_desc),
-            headers,
-            body: Box::new(ProcessAndBuffer { _p: p, buf: rdr }),
-        });
 
-        fn header<'a>(req: &'a dyn Request, name: &str) -> &'a str {
-            let h = req.headers().find(name).unwrap_or(Vec::new());
-            h.get(0).map(|s| *s).unwrap_or("")
+        let mut builder = Response::builder().status(status_code);
+        for (name, vec) in headers.iter() {
+            for value in vec {
+                builder = builder.header(name, value);
+            }
+        }
+
+        let body: Body = Box::new(ProcessAndBuffer { _p: p, buf: rdr });
+        return Ok(builder.body(body).unwrap());
+
+        /// Obtain the value of a header
+        ///
+        /// If multiple headers have the same name, only one will be returned.
+        ///
+        /// If there is no header, of if there is an error parsings it as utf8
+        /// then an empty slice will be returned.
+        fn header(req: &dyn RequestExt, name: header::HeaderName) -> &str {
+            req.headers()
+                .get(name)
+                .map(|value| value.to_str().unwrap_or_default())
+                .unwrap_or_default()
         }
     }
 }
 
 impl conduit::Handler for Serve {
-    fn call(&self, req: &mut dyn Request) -> Result<Response, Box<dyn Error + Send>> {
-        self.doit(req)
-            .map_err(|e| Box::new(e) as Box<dyn Error + Send>)
+    fn call(&self, req: &mut dyn RequestExt) -> HandlerResult {
+        self.doit(req).map_err(box_error)
     }
 }
