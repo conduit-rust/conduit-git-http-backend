@@ -21,7 +21,7 @@ impl Serve {
         cmd.arg("http-backend");
 
         // Required environment variables
-        cmd.env("REQUEST_METHOD", &format!("{}", req.method()));
+        cmd.env("REQUEST_METHOD", req.method().as_str());
         cmd.env("GIT_PROJECT_ROOT", &self.0);
         cmd.env(
             "PATH_INFO",
