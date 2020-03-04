@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::io;
 use std::io::prelude::*;
 use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
+use std::process::{Command, Stdio};
 
 use conduit::{box_error, header, Body, HandlerResult, RequestExt, Response};
 use flate2::read::GzDecoder;
@@ -83,16 +83,6 @@ impl Serve {
             parts.next().unwrap_or("").parse().unwrap_or(200)
         };
 
-        struct ProcessAndBuffer<R> {
-            _p: Child,
-            buf: io::BufReader<R>,
-        }
-        impl<R: Read> Read for ProcessAndBuffer<R> {
-            fn read(&mut self, b: &mut [u8]) -> io::Result<usize> {
-                self.buf.read(b)
-            }
-        }
-
         let mut builder = Response::builder().status(status_code);
         for (name, vec) in headers.iter() {
             for value in vec {
@@ -100,8 +90,9 @@ impl Serve {
             }
         }
 
-        let body: Body = Box::new(ProcessAndBuffer { _p: p, buf: rdr });
-        return Ok(builder.body(body).unwrap());
+        let mut body = Vec::new();
+        rdr.read_to_end(&mut body)?;
+        return Ok(builder.body(Body::from_vec(body)).unwrap());
 
         /// Obtain the value of a header
         ///
