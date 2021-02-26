@@ -13,5 +13,5 @@ Conduit handler for running `git http-backend` and serving up a git repository.
 """
 
 [dependencies]
-conduit = "0.9.0-alpha.2"
+conduit = "0.9.0-alpha.5"
 flate2 = "1"
