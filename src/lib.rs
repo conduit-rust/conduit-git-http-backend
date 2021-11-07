@@ -1,9 +1,6 @@
 #![deny(warnings)]
 #![warn(rust_2018_idioms)]
 
-extern crate conduit;
-extern crate flate2;
-
 use std::collections::HashMap;
 use std::io;
 use std::io::prelude::*;
