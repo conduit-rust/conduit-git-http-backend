@@ -14,5 +14,5 @@ Conduit handler for running `git http-backend` and serving up a git repository.
 edition = "2018"
 
 [dependencies]
-conduit = "0.9.0-alpha.5"
+conduit = "0.9.0"
 flate2 = "1"
