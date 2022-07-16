@@ -59,7 +59,7 @@ impl Serve {
         let mut headers = HashMap::new();
         for line in rdr.by_ref().lines() {
             let line = line?;
-            if line == "" || line == "\r" {
+            if line.is_empty() || line == "\r" {
                 break;
             }
 
