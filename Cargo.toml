@@ -12,7 +12,7 @@ description = """
 Conduit handler for running `git http-backend` and serving up a git repository.
 """
 edition = "2018"
-rust-version = "1.46.0"
+rust-version = "1.49.0"
 
 [dependencies]
 conduit = "0.10.0"
